@@ -25,7 +25,7 @@
         const lista = document.getElementById("lista-cpfs");
         if (data.cpfs.length > 0) {
           lista.innerHTML = data.cpfs.map(item => `<li>${item}</li>`).join("");
-        } else {
+        } else if (!data.finalizado) {
           lista.innerHTML = "<li>Nenhuma consulta em andamento.</li>";
         }
 
@@ -88,4 +88,5 @@
     </div>
   </div>
 </body>
+
 </html>
