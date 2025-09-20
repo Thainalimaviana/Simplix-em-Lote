@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Simulando CPFs...</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <script>
+    let pausado = false;
+
+    async function monitorarProgresso() {
+      if (pausado) return;
+
+      try {
+        const res = await fetch("/progresso-status");
+        const data = await res.json();
+
+        document.getElementById("barra").style.width = `${Math.min(data.porcentagem, 100)}%`;
+        document.getElementById("porcentagem").textContent = `${data.porcentagem}%`;
+        document.getElementById("contador-dia").textContent = data.contador || 0;
+        document.getElementById("contador-autorizados").textContent = data.autorizados || 0;
+
+        const lista = document.getElementById("lista-cpfs");
+        if (data.cpfs.length > 0) {
+          lista.innerHTML = data.cpfs.map(item => `<li>${item}</li>`).join("");
+        } else {
+          lista.innerHTML = "<li>Nenhuma consulta em andamento.</li>";
+        }
+
+        const msg = document.getElementById("status-final");
+        if (data.finalizado) {
+          msg.textContent = "✅ Todas as consultas foram finalizadas!";
+          msg.style.display = "block";
+        } else {
+          msg.style.display = "none";
+        }
+
+      } catch (e) {
+        console.error("Erro ao consultar progresso:", e);
+      }
+
+      setTimeout(monitorarProgresso, 1000);
+    }
+
+    function pausarConsulta() {
+      pausado = true;
+      fetch("/pausar", { method: "POST" });
+    }
+
+    function retomarConsulta() {
+      pausado = false;
+      fetch("/retomar", { method: "POST" });
+      monitorarProgresso();
+    }
+
+    window.onload = monitorarProgresso;
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Simulando CPFs...</h1>
+
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="barra"></div>
+    </div>
+    <p id="porcentagem">0%</p>
+
+    <p class="contador-dia">
+      Total de consultas realizadas hoje: <strong id="contador-dia"></strong> CPFs
+    </p>
+    <p class="contador-dia">
+      Consultas autorizadas: <strong id="contador-autorizados"></strong> CPFs
+    </p>
+
+    <h3>Consultas em andamento:</h3>
+    <ul id="lista-cpfs" class="caixa-lista"></ul>
+
+    <p id="status-final" style="display:none; font-weight:bold; color:green; margin-top:10px;"></p>
+
+    <div class="button-group" style="margin-top: 20px;">
+      <button class="vermelho" onclick="pausarConsulta()">Pausar</button>
+      <button class="amarelo" onclick="retomarConsulta()">Continuar</button>
+      <a href="/download"><button class="verde">Baixar Excel</button></a>
+      <a href="/"><button class="vermelho">Limpar</button></a>
+    </div>
+  </div>
+</body>
+</html>

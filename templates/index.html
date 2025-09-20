@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador - FGTS</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tomorrow&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="topo-esquerda">
+            <img src="/static/img/logo.png" alt="Logo da Consig Tech" class="logo-topo">
+            <span class="nome-empresa">Consig Tech</span>
+        </div>
+        <div class="topo-direita">
+            <span class="usuario">Thainá Viana</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 class="titulo-tomorrow">🚀 Simplix Simulador FGTS</h1>
+
+        {% if contador is defined %}
+        <p class="contador-dia">Consultas realizadas hoje: {{ contador }}</p>
+        {% endif %}
+
+        {% if recuperado %}
+        <div class="alerta verde">
+            ✅ Últimos dados recuperados com sucesso! Você pode baixar o Excel ou consultar novamente.
+        </div>
+        {% endif %}
+
+        {% if erro %}
+        <div class="alerta vermelho">
+            ⚠️ {{ erro }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/simular-lote">
+            <label>CPF</label><br>
+            <textarea name="cpfs" rows="10" required>{{ cpfs or '' }}</textarea><br>
+
+            <div class="button-group">
+                <button class="azul" type="submit"><i class="fa fa-play"></i> Simular</button>
+                <a href="/historico"><button class="verde" type="button"><i class="fa fa-rotate-right"></i>
+                        Histórico</button></a>
+                <a href="/"><button class="vermelho" type="button"><i class="fa fa-trash"></i> Limpar</button></a>
+            </div>
+        </form>
+        <div class="botao-centralizado">
+            <button class="amarelo" type="button" onclick="window.location.href='/recuperar-progresso'">
+                <i class="fa fa-rotate-left"></i> Recuperar últimos
+            </button>
+        </div>
+        {% if resultados %}
+        <div class="tabela-container">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th>CPF</th>
+                        <th>Saldo Bruto</th>
+                        <th>Valor Liberado</th>
+                        <th>Situação</th>
+                        <th>Informação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resultados %}
+                    <tr>
+                        <td>{{ r.cpf }}</td>
+                        <td>R$ {{ r.saldoBruto }}</td>
+                        <td>R$ {{ r.valorLiberado }}</td>
+                        <td>{{ r.situacao }}</td>
+                        <td>{{ r.informacao }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="text-align:center; margin-top: 20px;">
+                <a href="{{ download_link }}" class="botao-download">Baixar Recuperados</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>

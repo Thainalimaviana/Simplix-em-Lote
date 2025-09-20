@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Histórico de Simulações</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Histórico de Simulações</h1>
+        <ul id="lista-cpfs">
+            {% for arquivo in arquivos %}
+                <li>
+                    <a href="/baixar-resultado/{{ arquivo }}" download>{{ arquivo }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        <a href="/"><button class="vermelho">🔙 Voltar</button></a>
+    </div>
+</body>
+</html>
