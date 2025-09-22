@@ -253,11 +253,11 @@ td {
 .progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #4caf50, #fbc02d, #e53935);
+    background: linear-gradient(90deg, #cc00ff, #34dfc8, #02a559);
     background-size: 300% 100%;
     border-radius: 12px;
-    transition: width 0.5s ease-in-out;
-    animation: gradientShift 3s infinite linear;
+    transition: width 0.8s ease-in-out;
+    animation: gradientShift 5s infinite linear;
 }
 
 @keyframes gradientShift {

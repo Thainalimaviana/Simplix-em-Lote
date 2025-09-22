@@ -9,12 +9,13 @@
 
   <script>
     let pausado = false;
+    const loteId = "{{ lote_id }}";
 
     async function monitorarProgresso() {
       if (pausado) return;
 
       try {
-        const res = await fetch("/progresso-status");
+        const res = await fetch(`/progresso-status?lote_id=${loteId}`);
         const data = await res.json();
 
         document.getElementById("barra").style.width = `${Math.min(data.porcentagem, 100)}%`;
@@ -46,12 +47,12 @@
 
     function pausarConsulta() {
       pausado = true;
-      fetch("/pausar", { method: "POST" });
+      fetch(`/pausar?lote_id=${loteId}`, { method: "POST" });
     }
 
     function retomarConsulta() {
       pausado = false;
-      fetch("/retomar", { method: "POST" });
+      fetch(`/retomar?lote_id=${loteId}`, { method: "POST" });
       monitorarProgresso();
     }
 
@@ -83,10 +84,9 @@
     <div class="button-group" style="margin-top: 20px;">
       <button class="vermelho" onclick="pausarConsulta()">Pausar</button>
       <button class="amarelo" onclick="retomarConsulta()">Continuar</button>
-      <a href="/download"><button class="verde">Baixar Excel</button></a>
+      <a href="/download?lote_id={{ lote_id }}"><button class="verde">Baixar Excel</button></a>
       <a href="/"><button class="vermelho">Limpar</button></a>
     </div>
   </div>
 </body>
-
 </html>
