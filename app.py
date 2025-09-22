@@ -1,16 +1,16 @@
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import pandas as pd
 import requests
-import os
+import os, re
 import threading
 import json
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Queue
 from flask import redirect, url_for
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 RATE_SECONDS = 1.5
 
@@ -386,11 +386,13 @@ def download_resultado():
         todos = resultados + pendentes_restantes
 
         df = pd.DataFrame(todos)
-        filename = f"resultados_{lote_id}_{time.strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"resultados_{lote_id}_{timestamp}.xlsx"
         path = os.path.join(RESULT_FOLDER, filename)
         df.to_excel(path, index=False)
 
-    return send_file(path, as_attachment=True)
+    return send_file(path, as_attachment=True, download_name=filename)
 
 @app.route("/recuperar-progresso", methods=["GET"])
 def recuperar_progresso():
@@ -450,19 +452,32 @@ def listar_lotes():
 
 @app.route("/historico")
 def historico():
-    arquivos = sorted(
-        [f for f in os.listdir("resultados") if f.startswith("resultados_") and f.endswith(".xlsx")],
-        reverse=True
-    )
+    agora = datetime.now()
+    limite = timedelta(days=5)
+    arquivos = []
+
+    for f in os.listdir(RESULT_FOLDER):
+        if f.startswith("resultados_") and f.endswith(".xlsx"):
+            try:
+                match = re.search(r"_(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})\.xlsx$", f)
+                if match:
+                    data_str = match.group(1) + " " + match.group(2).replace("-", ":")
+                    data_arquivo = datetime.strptime(data_str, "%Y-%m-%d %H:%M:%S")
+
+                    if agora - data_arquivo <= limite:
+                        arquivos.append(f)
+                    else:
+                        os.remove(os.path.join(RESULT_FOLDER, f))
+                        print(f"[HISTÓRICO] Apagado {f} (mais de 5 dias).")
+            except Exception as e:
+                print(f"[HISTÓRICO] Erro ao processar {f}: {e}")
+
+    arquivos = sorted(arquivos, reverse=True)
     return render_template("historico.html", arquivos=arquivos)
 
 @app.route("/baixar-resultado/<filename>")
 def baixar_resultado(filename):
     return send_from_directory("resultados", filename, as_attachment=True)
-
-@app.route("/static/<filename>")
-def baixar_estatico(filename):
-    return send_from_directory("static", filename, as_attachment=True)
 
 if __name__ == "__main__":
     import os
