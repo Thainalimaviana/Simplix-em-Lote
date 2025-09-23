@@ -171,7 +171,7 @@ def progresso_status():
         "concluidos": concluidos,
         "total": total,
         "porcentagem": min(porcentagem, 100),
-        "finalizado": concluidos == total,
+        "finalizado": concluidos == total and dados.get("pendentes_retry", 0) == 0,
         "pausado": dados["pausado"],
         "cpfs": cpfs_status,
         "contador": obter_contador(),
@@ -222,11 +222,12 @@ def worker(lote_id):
                 caminho = os.path.join(RESULT_FOLDER, f"progresso_{lote_id}.json")
                 with open(caminho, "w", encoding="utf-8") as f:
                     json.dump({
-                    "resultados": progress_data[lote_id]["resultados"],
-                    "todos_cpfs": progress_data[lote_id].get("todos_cpfs", []),
-                    "concluidos": progress_data[lote_id]["concluidos"],
-                    "total": progress_data[lote_id]["total"]
-                }, f, ensure_ascii=False, indent=2)
+                        "resultados": progress_data[lote_id]["resultados"],
+                        "todos_cpfs": progress_data[lote_id].get("todos_cpfs", []),
+                        "concluidos": progress_data[lote_id]["concluidos"],
+                        "total": progress_data[lote_id]["total"],
+                        "pendentes_retry": progress_data[lote_id].get("pendentes_retry", 0)
+                    }, f, ensure_ascii=False, indent=2)
 
             print(f"[WORKER {lote_id}] Finalizei CPF: {cpf}")
             time.sleep(RATE_SECONDS)
@@ -241,11 +242,16 @@ def worker(lote_id):
             filas[lote_id].task_done()
 
     with progress_lock:
-        progress_data[lote_id]["finalizado"] = True
+        if progress_data[lote_id].get("pendentes_retry", 0) == 0:
+            progress_data[lote_id]["finalizado"] = True
 
     print(f"✅ Todas as consultas do lote {lote_id} foram finalizadas.")
 
+
 def retry_limite(cpf, payload, headers, lote_id):
+    with progress_lock:
+        progress_data[lote_id]["pendentes_retry"] = progress_data[lote_id].get("pendentes_retry", 0) + 1
+
     for tentativa in range(3):
         print(f"[{cpf}] ⚠️ Tentativa {tentativa+1}/3 após erro de limite...")
         time.sleep(60)
@@ -272,13 +278,20 @@ def retry_limite(cpf, payload, headers, lote_id):
                 continue
 
             with progress_lock:
-                progress_data[lote_id]["resultados"] = [r for r in progress_data[lote_id]["resultados"] if r["cpf"] != cpf]
+                progress_data[lote_id]["resultados"] = [
+                    r for r in progress_data[lote_id]["resultados"] if r["cpf"] != cpf
+                ]
                 progress_data[lote_id]["resultados"].append(resultado)
 
                 if not resultado.get("oculto"):
                     progress_data[lote_id]["concluidos"] += 1
                     if resultado["situacao"] == "Consulta OK":
                         registrar_consulta()
+
+                # diminuir pendentes
+                progress_data[lote_id]["pendentes_retry"] -= 1
+                if progress_data[lote_id]["pendentes_retry"] == 0 and filas[lote_id].empty():
+                    progress_data[lote_id]["finalizado"] = True
 
                 caminho = os.path.join(RESULT_FOLDER, f"progresso_{lote_id}.json")
                 with open(caminho, "w", encoding="utf-8") as f:
@@ -291,9 +304,15 @@ def retry_limite(cpf, payload, headers, lote_id):
 
     resultado = resposta(cpf, 0, 0, "Erro", "Limite de tentativas atingido", True)
     with progress_lock:
-        progress_data[lote_id]["resultados"] = [r for r in progress_data[lote_id]["resultados"] if r["cpf"] != cpf]
+        progress_data[lote_id]["resultados"] = [
+            r for r in progress_data[lote_id]["resultados"] if r["cpf"] != cpf
+        ]
         progress_data[lote_id]["resultados"].append(resultado)
         progress_data[lote_id]["concluidos"] += 1
+        progress_data[lote_id]["pendentes_retry"] -= 1
+
+        if progress_data[lote_id]["pendentes_retry"] == 0 and filas[lote_id].empty():
+            progress_data[lote_id]["finalizado"] = True
 
         caminho = os.path.join(RESULT_FOLDER, f"progresso_{lote_id}.json")
         with open(caminho, "w", encoding="utf-8") as f:
